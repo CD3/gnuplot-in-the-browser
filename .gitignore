@@ -1,0 +1,4 @@
+.*.swp
+activate.sh
+*-deploy
+build/

@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="CD Clark III">
+    <title>Gnuplot Online</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+body { padding-top: 5rem; }
+.starter-template { text-align: center; }
+#error { color: red; }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+      <a class="navbar-brand" href="#">Gnuplot Online</a>
+      <span id="version" style="font-size:small" class="navbar-brand"></span>
+
+
+
+      <div class="collapse navbar-collapse" id="FHSU-Logo">
+        <ul class="navbar-nav mr-auto"></ul>
+        <div>
+          <a class="nav-link" href="https://fhsu.edu">
+            <img src="fhsu-logo.png" style="height:40px"></img>
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="starter-template">
+      <p class="lead">
+      A <a href="http://www.gnuplot.info/" target="_blank">gnuplot</a> instance running in the browser with <a href=https://webassembly.org/">WebAssembly</a>, compiled with <a href="https://emscripten.org/">emscripten</a>.
+      </p>
+      <p id="loading" class="lead">
+      <img src="http://www.gnuplot.info/figs/gaussians.png" alt="Loading..." height="100">
+      </p>
+    </div>
+
+    <main id="gnuplot" role="main" class="container" style="display: none">
+      <div class="row">
+        <div class="col-md-2">
+          <input id="load-button" type="button" value="Load" class="form-control" disabled>
+        </div>
+        <div class="col-md-4">
+          <div class="form-group">
+            <select class="form-control" id="template-select" disabled>
+              <option>Function Plotting</option>
+              <option>Data Plotting</option>
+              <option>Linear Regression</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <small>Script:<small></small></small>
+          <div id="input" style="height: 50vh;">plot sin(x)</div>
+        </div>
+        <div class="col-md-6">
+          <small>Data:<small></small></small>
+          <div id="data" style="height: 50vh;"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <small>Output:<small></small></small>
+          <div id="output" style="height: 50vh;"></div>
+        </div>
+        <div class="col-md-6">
+          <small>Image:<small></small></small>
+          <img id="gnuplot-image" style="height: 50vh;" alt="No image yet."></img>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-12 text-center">
+          <hr />
+          <p>You can learn how to use gnuplot (and many other command line analysis tools) by taking my <a href="https://catalog.fhsu.edu/Werth%20College%20of%20Science,%20Technology%20%20Mathematics/Physics/PHYS213.html" target="_blank">Scientific Computing and Productivity</a> class at Fort Hays State University, online or on campus.</p>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-12 text-center">
+          <hr />
+          <p>I learned how to build WebAssembly applications like this one by reading Robert Aboukhalil's book <a href="http://levelupwasm.com" target="_blank">Level Up with WebAssembly</a>.</p>
+        </div>
+      </div>
+<!-- Footer -->
+<footer class="page-footer font-small blue">
+  <div class="footer-copyright text-center py-3">Created by: CD Clark III, FHSU Physics Department
+  </div>
+</footer>
+    </main>
+
+    <!-- Main logic -->
+    <script type="text/javascript">
+      // WebAssembly module config
+      var STDOUT = [],
+  SCRIPT_FILE = "/tmp/script.gnuplot",
+  CONFIG_EDITOR = {
+    mode: "ace/mode/text",
+    selectionStyle: "text",
+    tabSize: 2
+  };
+
+var Module = {
+  // Don't run main on page load
+  noInitialRun: true,
+
+  // Print functions
+  print: stdout => STDOUT.push(stdout),
+  printErr: stderr => STDOUT.push(stderr),
+
+  // When the module is ready
+  onRuntimeInitialized: function() {
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("gnuplot").style.display = "block";
+    document.getElementById("load-button").disabled = false;
+    document.getElementById("template-select").disabled = false;
+    document.getElementById("version").innerHTML = "Powered by " + gnuplot("","--version").stdout;
+  },
+
+  preRun: function() {
+    function stdin() {
+      return null; // if gnuplot asks for input, say NO
+    }
+
+    FS.init(stdin,null,null);
+  }
+};
+
+// Utility function to run gnuplot
+function gnuplot(script, options)
+{
+  var mainOptions = [  ];
+  if(options != null && options.length > 0)
+    mainOptions = mainOptions.concat(options);
+
+  // Create file from object
+  script = "set term svg;set output 'out.svg'\n" + script;
+  FS.writeFile(SCRIPT_FILE, script);
+
+  // Clear previous stdout/stderr before launching gnuplot
+  STDOUT = [];
+
+  // Launch gnuplot's main() function
+  mainOptions = mainOptions.concat([ SCRIPT_FILE ]);
+  callMain(mainOptions);
+
+  // Re-open stdout/stderr after gnuplot closes them
+  FS.streams[1] = FS.open("/dev/stdout", "w");
+  FS.streams[2] = FS.open("/dev/stderr", "w");
+
+  return {
+    stdout: STDOUT.join("\n"),
+  }
+}
+
+// Launch gnuplot with current field values
+function launch()
+{
+  var elError = document.getElementById("error"),
+    elImage = document.getElementById("gnuplot-image");
+
+  // Collect options
+  var options = [];
+
+  // Write data file
+  FS.writeFile("data.txt", editorData.getValue());
+
+  // Call gnuplot
+  var out = gnuplot(editorInput.getValue(), options);
+
+
+  // get image
+  <!-- var text = FS.readFile("out.svg", {encoding: "utf8"}); -->
+  <!-- elImage.innerHTML = text; -->
+  var imgdata = FS.readFile("out.svg");
+  var imgblob = new Blob([imgdata], {"type": "image\/svg+xml"});
+  window.URL = window.URL || window.webkitURL;
+  elImage.src = window.URL.createObjectURL(imgblob);
+
+
+  editorOutput.setValue(out.stdout, 1);
+}
+
+// On page load
+document.addEventListener("DOMContentLoaded", function()
+  {
+    // Load templates when the load button is clicked
+    document.getElementById("load-button").addEventListener("click",
+      function(){
+        var choice = document.getElementById("template-select").value;
+
+        var script_text = "";
+        var data_text = "";
+        if(choice == "Function Plotting")
+        {
+          script_text += "set title 'Function Plot'\n";
+          script_text += "set xlabel 'time [s]'\n";
+          script_text += "set ylabel 'voltage [V]'\n";
+          script_text += "set xrange[0:5]\n";
+          script_text += "set yrange[-1.5:1.5]\n";
+          script_text += "plot exp(-x)*sin(4*x) title 'signal', exp(-x) title 'amplitude' lt 0, -exp(-x) title '' lt 0\n";
+        }
+
+        if(choice == "Data Plotting")
+        {
+          script_text += "set title 'Data Plot'\n";
+          script_text += "set xlabel 'time [min]'\n";
+          script_text += "set ylabel 'distance [mile]'\n";
+          script_text += "plot 'data.txt' title 'trial 1', 'data.txt' using 1:3 title 'trial 2'\n";
+
+          data_text += "0  0.0  0.0\n";
+          data_text += "5  5.5  5.7\n";
+          data_text += "10 11.2 12.7\n";
+          data_text += "15 16.4 17.2\n";
+          data_text += "20 22.1 23.8\n";
+          data_text += "25 27.8 27.4\n";
+          data_text += "30 33.8 34.7\n";
+          data_text += "35 38.4 39.2\n";
+          data_text += "40 41.1 44.5\n";
+          data_text += "45 45.8 46.8\n";
+          data_text += "50 54.7 57.4\n";
+          data_text += "55 59.2 59.5\n";
+          data_text += "60 62.5 66.1\n";
+        }
+
+        if(choice == "Linear Regression")
+        {
+          script_text += "set title 'Data Plot'\n";
+          script_text += "set xlabel 'time [min]'\n";
+          script_text += "set ylabel 'distance [mile]'\n";
+          script_text += "fit m*x + b 'data.txt' via m,b\n";
+          script_text += "plot 'data.txt' title 'data', m*x + b title 'fit'\n";
+
+          data_text += "0  0.0\n";
+          data_text += "5  5.5\n";
+          data_text += "10 11.2\n";
+          data_text += "15 16.4\n";
+          data_text += "20 22.1\n";
+          data_text += "25 27.8\n";
+          data_text += "30 33.8\n";
+          data_text += "35 38.4\n";
+          data_text += "40 41.1\n";
+          data_text += "45 45.8\n";
+          data_text += "50 54.7\n";
+          data_text += "55 59.2\n";
+          data_text += "60 62.5\n";
+        }
+
+        editorInput.setValue(script_text);
+        editorData.setValue(data_text);
+      }
+    );
+
+    // Setup ACE editors
+    var elInput = document.getElementById("input"),
+      elData = document.getElementById("data"),
+      elOutput = document.getElementById("output");
+
+    editorInput = ace.edit(elInput, CONFIG_EDITOR);
+    editorData = ace.edit(elData, CONFIG_EDITOR);
+    editorOutput = ace.edit(elOutput, CONFIG_EDITOR);
+
+    editorInput.getSession().on("change", launch);
+    editorData.getSession().on("change", launch);
+
+    // Logic for auto-launching gnuplot
+    var timerIsTyping = null;
+
+    // Output options
+  });
+    </script>
+
+    <!-- JS Libraries -->
+    <script src="gnuplot.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.2/ace.js"></script>
+  </body>
+</html>

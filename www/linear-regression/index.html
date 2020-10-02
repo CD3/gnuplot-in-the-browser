@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="CD Clark III">
+    <title>Online Linear Regression</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+body { padding-top: 5rem; }
+.starter-template { text-align: center; }
+#error { color: red; }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  </head>
+
+
+
+  <body>
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+      <a class="navbar-brand" href="#">Online Linear Regression</a>
+      <span id="version" style="font-size:small" class="navbar-brand"></span>
+      <div class="collapse navbar-collapse" id="FHSU-Logo">
+        <ul class="navbar-nav mr-auto"></ul>
+        <div>
+          <a class="nav-link" href="https://fhsu.edu">
+            <img src="fhsu-logo.png" style="height:40px"></img>
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="starter-template">
+      <p id="loading" class="lead">
+      <img src="http://www.gnuplot.info/figs/gaussians.png" alt="Loading..." height="100">
+      </p>
+    </div>
+
+    <main id="gnuplot" role="main" class="container" style="display: none">
+      <div class="row">
+        <div class="col-md-4">
+        <label for='graph-title'>Title: </label>
+        <input id='graph-title' class="form-input" value="My Title"></input>
+      </div>
+      </div>
+      <div class="row">
+        <div class="col-md-4">
+          <table id="data-table">
+            <tr>
+              <th id="x-label" contenteditable="true">x label</th>
+              <th id="y-label" contenteditable="true">y label</th>
+            </tr>
+            <tr class="data">
+              <td><input value="0"></input></td>
+              <td><input value="1"></input></td>
+            </tr>
+            <tr class="data">
+              <td><input value="3"></input></td>
+              <td><input value="5"></input></td>
+            </tr>
+            <tr>
+              <td><input id="x-log-checkbox" value="" type="checkbox">
+                <label for="x-log-checkbox">Logscale</label>
+                </input></td>
+              <td><input id="y-log-checkbox" value="" type="checkbox">
+                <label for="y-log-checkbox">Logscale</label>
+                </input></td>
+            </tr>
+            <tr>
+              <td><input id="add-row-button" value="Add row" type="button"></input></td>
+            </tr>
+          </table>
+        </div>
+        <div class="col-md-1">
+        </div>
+        <div class="col-md-7">
+          <img id="gnuplot-image" style="" alt="Start entering data in the table on the left."></img>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-4">
+          <input class="form-check-input" type="checkbox" value="" id="regression-checkbox">
+          <label for="regression-checkbox">Add linear fit</label>
+          </input>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-4">
+          <input class="form-check-input" type="checkbox" value="" id="show-output-checkbox">
+          <label for="show-output-checkbox">Show gnuplot output</label>
+          </input>
+        </div>
+      </div>
+      <div id='gnuplot-output-area'>
+        <div class="row">
+          <div class="col-md-4">
+            <label for="gnuplot-output">Gnuplot Output:</label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-12">
+          <div class="form-group">
+            <textarea id="gnuplot-output" class="form-control" style="height: 50vh"></textarea>
+          </div>
+          </div>
+        </div>
+      </div>
+
+<!-- Footer -->
+<footer class="page-footer font-small blue">
+  <div class="footer-copyright text-center py-3">Created by: CD Clark III, FHSU Physics Department
+  </div>
+</footer>
+    </main>
+
+    <!-- Main logic -->
+    <script type="text/javascript">
+      // WebAssembly module config
+      var STDOUT = [],
+          SCRIPT_FILE = "/tmp/script.gnuplot";
+
+var Module = {
+  // Don't run main on page load
+  noInitialRun: true,
+
+  // Print functions
+  print: stdout => STDOUT.push(stdout),
+  printErr: stderr => STDOUT.push(stderr),
+
+  // When the module is ready
+  onRuntimeInitialized: function() {
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("gnuplot").style.display = "block";
+    document.getElementById("version").innerHTML = "Powered by " + gnuplot("","--version").stdout;
+    run_plot();
+    
+  },
+
+  preRun: function() {
+    function stdin() {
+      return null; // if gnuplot asks for input, say NO
+    }
+
+    FS.init(stdin,null,null);
+  },
+};
+
+// Utility function to run gnuplot
+function gnuplot(script, options)
+{
+  var mainOptions = [  ];
+  if(options != null && options.length > 0)
+    mainOptions = mainOptions.concat(options);
+
+  // Create file from object
+  script = "set term svg;set output 'out.svg';set key top left;\n" + script;
+  FS.writeFile(SCRIPT_FILE, script);
+
+  // Clear previous stdout/stderr before launching gnuplot
+  STDOUT = [];
+
+  // Launch gnuplot's main() function
+  mainOptions = mainOptions.concat([ SCRIPT_FILE ]);
+  callMain(mainOptions);
+
+  // Re-open stdout/stderr after gnuplot closes them
+  FS.streams[1] = FS.open("/dev/stdout", "w");
+  FS.streams[2] = FS.open("/dev/stderr", "w");
+
+  return {
+    stdout: STDOUT.join("\n"),
+  }
+}
+
+// Launch gnuplot with current data
+function run_plot()
+{
+
+  // Write data file
+  var data_text = "";
+  $("#data-table tr.data").each(
+    function(i)
+    {
+      data_text += $(this).children("td").first().children("input").val();
+      data_text += " ";
+      data_text += $(this).children("td").last().children("input").val();
+      data_text += "\n";
+    }
+  );
+
+  FS.writeFile("data.txt", data_text);
+
+  // Call gnuplot
+  var options = [];
+  var script = "";
+  script += "set title '"+ $("#graph-title").val()+"';";
+  script += "set xlabel '"+ $("#x-label").text()+"';";
+  script += "set ylabel '"+ $("#y-label").text()+"';";
+  script += "set offsets graph 0.1, graph 0.1, graph 0.1, graph 0.1;";
+  if( $("#x-log-checkbox").prop("checked") )
+  {
+    script += "set logscale x;";
+  }
+  if( $("#y-log-checkbox").prop("checked") )
+  {
+    script += "set logscale y;";
+  }
+  if( $("#regression-checkbox").prop("checked") )
+  {
+    script += "fit m*x +b 'data.txt' via m,b;";
+    script += "set label sprintf(\"slope: %.2f\\ny-intercept: %.2f\",m,b) left at graph 0.1,graph 0.8;";
+    script += "plot 'data.txt' title 'data', m*x+b title 'best fit line';";
+  }
+  else
+  {
+    script += "plot 'data.txt' title ''\n";
+  }
+
+
+  var out = gnuplot(script, options);
+
+  $("#gnuplot-output").text(out.stdout);
+
+  // get image
+  var elImage = document.getElementById("gnuplot-image");
+  var imgdata = FS.readFile("out.svg");
+  var imgblob = new Blob([imgdata], {"type": "image\/svg+xml"});
+  window.URL = window.URL || window.webkitURL;
+  elImage.src = window.URL.createObjectURL(imgblob);
+
+
+}
+
+var add_data_tablerow = function()
+{
+  var lastRow = $("#data-table tr.data").last();
+  var clonedRow = lastRow.clone();
+  clonedRow.find('input').val("");
+  clonedRow.change(run_plot);
+  lastRow.after(clonedRow);
+}
+
+$(document).ready(
+  function(){
+    for(i = 2; i < 10; i++){
+    add_data_tablerow();
+            }
+    $("#gnuplot-output-area").hide();
+    $("#data-table th").blur(run_plot);
+    $("#data-table input").change(run_plot);
+    $("#add-row-button").click(add_data_tablerow);
+    $("#regression-checkbox").click(run_plot);
+    $("#graph-title").change(run_plot);
+    $("#show-output-checkbox").click(
+            function(){
+            if( $(this).prop("checked") )
+            {
+              $("#gnuplot-output-area").show();
+            }
+            else
+            {
+              $("#gnuplot-output-area").hide();
+            }
+            }
+            );
+  }
+);
+
+
+    </script>
+
+    <!-- JS Libraries -->
+    <script src="gnuplot.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.2/ace.js"></script>
+  </body>
+</html>
