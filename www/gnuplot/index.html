@@ -140,10 +140,6 @@ var Module = {
 // Utility function to run gnuplot
 function gnuplot(script, options)
 {
-  var mainOptions = [  ];
-  if(options != null && options.length > 0)
-    mainOptions = mainOptions.concat(options);
-
   // Create file from object
   script = "set term svg;set output 'out.svg'\n" + script;
   FS.writeFile(SCRIPT_FILE, script);
@@ -152,12 +148,16 @@ function gnuplot(script, options)
   STDOUT = [];
 
   // Launch gnuplot's main() function
-  mainOptions = mainOptions.concat([ SCRIPT_FILE ]);
-  callMain(mainOptions);
-
-  // Re-open stdout/stderr after gnuplot closes them
-  FS.streams[1] = FS.open("/dev/stdout", "w");
-  FS.streams[2] = FS.open("/dev/stderr", "w");
+  var args = [ SCRIPT_FILE ];
+  args = args.concat(options)
+  // HACK: gnuplot does not clean up memory when it exits.
+  // this is OK under normal circumstances because the OS will
+  // reclaim the memory. But the emscripten runtime does not
+  // do this, so we create a snapshot of the memory before calling
+  // main and restore it after calling main.
+  const mem_snapshot = Uint8Array.from(HEAPU8);
+  callMain(args);
+  HEAPU8.set(mem_snapshot);
 
   return {
     stdout: STDOUT.join("\n"),
