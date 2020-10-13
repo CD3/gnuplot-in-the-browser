@@ -45,7 +45,7 @@ body { padding-top: 5rem; }
     <main id="gnuplot" role="main" class="container" style="display: none">
       <div class="row">
         <div class="col-md-2">
-          <input id="load-button" type="button" value="Load" class="form-control" disabled>
+          <input id="load-button" type="button" value="Load" class="form-control" title='Load a pre-configured example from the list on the right.' disabled>
         </div>
         <div class="col-md-4">
           <div class="form-group">
@@ -56,6 +56,9 @@ body { padding-top: 5rem; }
             </select>
           </div>
         </div>
+        <div class="col-md-2">
+          <input id="download-button" type="button" value="Download Files" class="form-control" title="Download the gnuplot script, data file, and plot image to your computer." disabled>
+        </div>
       </div>
 
       <div class="row">
@@ -64,19 +67,19 @@ body { padding-top: 5rem; }
           <div id="input" style="height: 50vh;">plot sin(x)</div>
         </div>
         <div class="col-md-6">
-          <small>Data:<small></small></small>
-          <div id="data" style="height: 50vh;"></div>
+          <small>Image:<small></small></small>
+          <object id="gnuplot-image" style="height: 50vh;" alt="No image yet."></object>
         </div>
       </div>
 
       <div class="row">
         <div class="col-md-6">
-          <small>Output:<small></small></small>
-          <div id="output" style="height: 50vh;"></div>
+          <small>Data:<small></small></small>
+          <div id="data" style="height: 50vh;"></div>
         </div>
         <div class="col-md-6">
-          <small>Image:<small></small></small>
-          <img id="gnuplot-image" style="height: 50vh;" alt="No image yet."></img>
+          <small>Output:<small></small></small>
+          <div id="output" style="height: 50vh;"></div>
         </div>
       </div>
 
@@ -124,6 +127,7 @@ var Module = {
     document.getElementById("loading").style.display = "none";
     document.getElementById("gnuplot").style.display = "block";
     document.getElementById("load-button").disabled = false;
+    document.getElementById("download-button").disabled = false;
     document.getElementById("template-select").disabled = false;
     document.getElementById("version").innerHTML = "Powered by " + gnuplot("","--version").stdout;
   },
@@ -141,7 +145,7 @@ var Module = {
 function gnuplot(script, options)
 {
   // Create file from object
-  script = "set term svg;set output 'out.svg'\n" + script;
+  script = "set term svg;set output '/tmp/out.svg'\n" + script;
   FS.writeFile(SCRIPT_FILE, script);
 
   // Clear previous stdout/stderr before launching gnuplot
@@ -168,7 +172,7 @@ function gnuplot(script, options)
 function launch()
 {
   var elError = document.getElementById("error"),
-    elImage = document.getElementById("gnuplot-image");
+  elImage = document.getElementById("gnuplot-image");
 
   // Collect options
   var options = [];
@@ -181,12 +185,13 @@ function launch()
 
 
   // get image
-  <!-- var text = FS.readFile("out.svg", {encoding: "utf8"}); -->
-  <!-- elImage.innerHTML = text; -->
-  var imgdata = FS.readFile("out.svg");
-  var imgblob = new Blob([imgdata], {"type": "image\/svg+xml"});
-  window.URL = window.URL || window.webkitURL;
-  elImage.src = window.URL.createObjectURL(imgblob);
+
+
+  var imgdata = FS.readFile("/tmp/out.svg",{"encoding":"utf8"});
+  elImage.innerHTML = imgdata;
+  <!-- var imgblob = new Blob([imgdata], {"type": "image/svg+xml"}); -->
+  <!-- window.URL = window.URL || window.webkitURL; -->
+  <!-- elImage.src = window.URL.createObjectURL(imgblob); -->
 
 
   editorOutput.setValue(out.stdout, 1);
@@ -195,6 +200,28 @@ function launch()
 // On page load
 document.addEventListener("DOMContentLoaded", function()
   {
+    document.getElementById("download-button").addEventListener("click",
+      function(){
+
+        var elem = document.createElement("a");
+        elem.href = "data:attachment/text," + encodeURIComponent(editorInput.getValue());
+        elem.target = '_blank';
+        elem.download = 'script.gnuplot';
+        elem.click();
+
+        elem = document.createElement("a");
+        elem.href = "data:attachment/text," + encodeURIComponent(editorData.getValue());
+        elem.target = '_blank';
+        elem.download = 'data.txt';
+        elem.click();
+
+        elem = document.createElement("a");
+        elem.href = "data:attachment/text," + encodeURIComponent(FS.readFile("/tmp/out.svg",{"encoding":"utf8"}));
+        elem.target = '_blank';
+        elem.download = 'plot.svg';
+        elem.click();
+
+      });
     // Load templates when the load button is clicked
     document.getElementById("load-button").addEventListener("click",
       function(){
