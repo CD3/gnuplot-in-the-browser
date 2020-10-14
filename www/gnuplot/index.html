@@ -195,6 +195,13 @@ function launch()
 
 
   editorOutput.setValue(out.stdout, 1);
+
+  // save script and data file 
+  if(typeof(Storage) !== "undefined")
+  {
+    localStorage.setItem("script.gnuplot", editorInput.getValue());
+    localStorage.setItem("data.txt", editorData.getValue());
+  }
 }
 
 var typingTimer;
@@ -203,6 +210,26 @@ var typingTimeout = 500;
 // On page load
 document.addEventListener("DOMContentLoaded", function()
   {
+
+
+    // Setup ACE editors
+    var elInput = document.getElementById("input"),
+      elData = document.getElementById("data"),
+      elOutput = document.getElementById("output");
+
+    editorInput = ace.edit(elInput, CONFIG_EDITOR);
+    editorData = ace.edit(elData, CONFIG_EDITOR);
+    editorOutput = ace.edit(elOutput, CONFIG_EDITOR);
+
+
+
+
+
+
+
+
+
+
     document.addEventListener("keydown", function(){
       clearTimeout(typingTimer);
     });
@@ -210,6 +237,26 @@ document.addEventListener("DOMContentLoaded", function()
       clearTimeout(typingTimer);
       typingTimer = setTimeout(launch,typingTimeout);
     });
+
+
+    if(typeof(Storage) !== "undefined")
+    {
+      var script = localStorage.getItem("script.gnuplot");
+      if( script != null )
+      {
+        editorInput.setValue(script);
+        editorInput.gotoLine(1);
+      }
+      var data = localStorage.getItem("data.txt");
+      if( script != null )
+      {
+        editorData.setValue(data);
+        editorData.gotoLine(1);
+      }
+    }
+
+
+
     document.getElementById("download-button").addEventListener("click",
       function(){
 
@@ -299,22 +346,10 @@ document.addEventListener("DOMContentLoaded", function()
       }
     );
 
-    // Setup ACE editors
-    var elInput = document.getElementById("input"),
-      elData = document.getElementById("data"),
-      elOutput = document.getElementById("output");
-
-    editorInput = ace.edit(elInput, CONFIG_EDITOR);
-    editorData = ace.edit(elData, CONFIG_EDITOR);
-    editorOutput = ace.edit(elOutput, CONFIG_EDITOR);
-
-    <!-- editorInput.getSession().on("change", launch); -->
-    <!-- editorData.getSession().on("change", launch); -->
-
-    // Logic for auto-launching gnuplot
-    var timerIsTyping = null;
 
   });
+
+  
     </script>
 
     <!-- JS Libraries -->
