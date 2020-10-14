@@ -152,7 +152,7 @@ function gnuplot(script, options)
   STDOUT = [];
 
   // Launch gnuplot's main() function
-  var args = [ SCRIPT_FILE ];
+  let args = [ SCRIPT_FILE ];
   args = args.concat(options)
   // HACK: gnuplot does not clean up memory when it exits.
   // this is OK under normal circumstances because the OS will
@@ -171,23 +171,23 @@ function gnuplot(script, options)
 // Launch gnuplot with current field values
 function launch()
 {
-  var elError = document.getElementById("error"),
+  let elError = document.getElementById("error"),
   elImage = document.getElementById("gnuplot-image");
 
   // Collect options
-  var options = [];
+  let options = [];
 
   // Write data file
   FS.writeFile("data.txt", editorData.getValue());
 
   // Call gnuplot
-  var out = gnuplot(editorInput.getValue(), options);
+  let out = gnuplot(editorInput.getValue(), options);
 
 
   // get image
 
 
-  var imgdata = FS.readFile("/tmp/out.svg",{"encoding":"utf8"});
+  let imgdata = FS.readFile("/tmp/out.svg",{"encoding":"utf8"});
   elImage.innerHTML = imgdata;
   <!-- var imgblob = new Blob([imgdata], {"type": "image/svg+xml"}); -->
   <!-- window.URL = window.URL || window.webkitURL; -->
@@ -213,7 +213,7 @@ document.addEventListener("DOMContentLoaded", function()
 
 
     // Setup ACE editors
-    var elInput = document.getElementById("input"),
+    let elInput = document.getElementById("input"),
       elData = document.getElementById("data"),
       elOutput = document.getElementById("output");
 
@@ -230,9 +230,7 @@ document.addEventListener("DOMContentLoaded", function()
 
 
 
-    document.addEventListener("keydown", function(){
-      clearTimeout(typingTimer);
-    });
+    // automatically run gnuplot when the user stops typing
     document.addEventListener("keyup", function(){
       clearTimeout(typingTimer);
       typingTimer = setTimeout(launch,typingTimeout);
@@ -241,13 +239,13 @@ document.addEventListener("DOMContentLoaded", function()
 
     if(typeof(Storage) !== "undefined")
     {
-      var script = localStorage.getItem("script.gnuplot");
+      let script = localStorage.getItem("script.gnuplot");
       if( script != null )
       {
         editorInput.setValue(script);
         editorInput.gotoLine(1);
       }
-      var data = localStorage.getItem("data.txt");
+      let data = localStorage.getItem("data.txt");
       if( script != null )
       {
         editorData.setValue(data);
@@ -260,7 +258,7 @@ document.addEventListener("DOMContentLoaded", function()
     document.getElementById("download-button").addEventListener("click",
       function(){
 
-        var elem = document.createElement("a");
+        let elem = document.createElement("a");
         elem.href = "data:attachment/text," + encodeURIComponent(editorInput.getValue());
         elem.target = '_blank';
         elem.download = 'script.gnuplot';
@@ -282,10 +280,10 @@ document.addEventListener("DOMContentLoaded", function()
     // Load templates when the load button is clicked
     document.getElementById("load-button").addEventListener("click",
       function(){
-        var choice = document.getElementById("template-select").value;
+        let choice = document.getElementById("template-select").value;
 
-        var script_text = "";
-        var data_text = "";
+        let script_text = "";
+        let data_text = "";
         if(choice == "Function Plotting")
         {
           script_text += "set title 'Function Plot'\n";
