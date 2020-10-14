@@ -197,9 +197,19 @@ function launch()
   editorOutput.setValue(out.stdout, 1);
 }
 
+var typingTimer;
+var typingTimeout = 500;
+
 // On page load
 document.addEventListener("DOMContentLoaded", function()
   {
+    document.addEventListener("keydown", function(){
+      clearTimeout(typingTimer);
+    });
+    document.addEventListener("keyup", function(){
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(launch,typingTimeout);
+    });
     document.getElementById("download-button").addEventListener("click",
       function(){
 
@@ -298,13 +308,12 @@ document.addEventListener("DOMContentLoaded", function()
     editorData = ace.edit(elData, CONFIG_EDITOR);
     editorOutput = ace.edit(elOutput, CONFIG_EDITOR);
 
-    editorInput.getSession().on("change", launch);
-    editorData.getSession().on("change", launch);
+    <!-- editorInput.getSession().on("change", launch); -->
+    <!-- editorData.getSession().on("change", launch); -->
 
     // Logic for auto-launching gnuplot
     var timerIsTyping = null;
 
-    // Output options
   });
     </script>
 
