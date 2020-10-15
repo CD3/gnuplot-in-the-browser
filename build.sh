@@ -73,6 +73,7 @@ fi
 
 cp ${BUILD}/gnuplot-${GNUPLOT_VERSION}/src/gnuplot gnuplot-deploy/gnuplot.js
 cp ${BUILD}/gnuplot-${GNUPLOT_VERSION}/src/gnuplot.wasm gnuplot-deploy/
+cp -r ${BUILD}/gnuplot-${GNUPLOT_VERSION}/term/js/ gnuplot-deploy/files
 cp www/gnuplot/index.html gnuplot-deploy/
 cp www/fhsu-logo.png gnuplot-deploy/
 

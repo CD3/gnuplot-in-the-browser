@@ -15,6 +15,12 @@ body { padding-top: 5rem; }
 .starter-template { text-align: center; }
 #error { color: red; }
     </style>
+
+
+  <script src="./files/canvastext.js"></script>
+  <script src="./files/gnuplot_common.js"></script>
+  <script src="./files/gnuplot_dashedlines.js"></script>
+  <script type="text/javascript">gnuplot.init = function() {};</script>
   </head>
   <body>
     <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
@@ -68,7 +74,8 @@ body { padding-top: 5rem; }
         </div>
         <div class="col-md-6">
           <small>Image:<small></small></small>
-          <object id="gnuplot-image" style="height: 50vh;" alt="No image yet."></object>
+          <div id="gnuplot-image">
+          </div>
         </div>
       </div>
 
@@ -107,7 +114,7 @@ body { padding-top: 5rem; }
     <script type="text/javascript">
       // WebAssembly module config
       var STDOUT = [],
-  SCRIPT_FILE = "/tmp/script.gnuplot",
+  SCRIPT_FILE = "script.gnuplot",
   CONFIG_EDITOR = {
     mode: "ace/mode/text",
     selectionStyle: "text",
@@ -129,7 +136,7 @@ var Module = {
     document.getElementById("load-button").disabled = false;
     document.getElementById("download-button").disabled = false;
     document.getElementById("template-select").disabled = false;
-    document.getElementById("version").innerHTML = "Powered by " + gnuplot("","--version").stdout;
+    document.getElementById("version").innerHTML = "Powered by " + run_gnuplot("","--version").stdout;
   },
 
   preRun: function() {
@@ -142,10 +149,10 @@ var Module = {
 };
 
 // Utility function to run gnuplot
-function gnuplot(script, options)
+function run_gnuplot(script, options)
 {
   // Create file from object
-  script = "set term svg;set output '/tmp/out.svg'\n" + script;
+  script = "set term canvas name 'draw_plot_on_canvas' size 500,400;set output 'plot.js'\n" + script;
   FS.writeFile(SCRIPT_FILE, script);
 
   // Clear previous stdout/stderr before launching gnuplot
@@ -172,31 +179,25 @@ function gnuplot(script, options)
 function launch()
 {
   let elError = document.getElementById("error"),
-  elImage = document.getElementById("gnuplot-image");
-
-  // Collect options
-  let options = [];
+      elImage = document.getElementById("gnuplot-image");
 
   // Write data file
   FS.writeFile("data.txt", editorData.getValue());
-
   // Call gnuplot
-  let out = gnuplot(editorInput.getValue(), options);
-
-
-  // get image
-
-
-  let imgdata = FS.readFile("/tmp/out.svg",{"encoding":"utf8"});
-  elImage.innerHTML = imgdata;
-  <!-- var imgblob = new Blob([imgdata], {"type": "image/svg+xml"}); -->
-  <!-- window.URL = window.URL || window.webkitURL; -->
-  <!-- elImage.src = window.URL.createObjectURL(imgblob); -->
-
-
+  let out = run_gnuplot(editorInput.getValue(), []);
+  // Display output
   editorOutput.setValue(out.stdout, 1);
+  // Display plot image
+  elImage.innerHTML = "<canvas id='draw_plot_on_canvas' width=500 height=400> <div id='err_msg'>No support for HTML 5 canvas element<\/div> <\/canvas>";
+  let draw_script  = FS.readFile("plot.js",{"encoding":"utf8"});
+  eval(draw_script);
+  if( typeof draw_plot_on_canvas == 'function')
+  {
+    draw_plot_on_canvas();
+  }
 
-  // save script and data file 
+
+  // Save script and data file 
   if(typeof(Storage) !== "undefined")
   {
     localStorage.setItem("script.gnuplot", editorInput.getValue());
@@ -270,11 +271,11 @@ document.addEventListener("DOMContentLoaded", function()
         elem.download = 'data.txt';
         elem.click();
 
-        elem = document.createElement("a");
-        elem.href = "data:attachment/text," + encodeURIComponent(FS.readFile("/tmp/out.svg",{"encoding":"utf8"}));
-        elem.target = '_blank';
-        elem.download = 'plot.svg';
-        elem.click();
+        <!-- elem = document.createElement("a"); -->
+        <!-- elem.href = "data:attachment/text," + encodeURIComponent(FS.readFile("/tmp/out.html",{"encoding":"utf8"})); -->
+        <!-- elem.target = '_blank'; -->
+        <!-- elem.download = 'plot.html'; -->
+        <!-- elem.click(); -->
 
       });
     // Load templates when the load button is clicked
