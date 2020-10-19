@@ -201,6 +201,7 @@ function run_plot()
   script += "set xlabel '"+ $("#x-label").text()+"';";
   script += "set ylabel '"+ $("#y-label").text()+"';";
   script += "set offsets graph 0.1, graph 0.1, graph 0.1, graph 0.1;";
+  script += "set key top left;";
   if( $("#x-log-checkbox").prop("checked") )
   {
     script += "set logscale x;";
