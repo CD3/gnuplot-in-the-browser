@@ -212,7 +212,7 @@ function run_plot()
   }
   if( $("#regression-checkbox").prop("checked") )
   {
-    script += "fit m*x +b 'data.txt' via m,b;";
+    script += "stats 'data.txt';m=STATS_slope;b=STATS_intercept;";
     script += "set label sprintf(\"slope: %.2f\\ny-intercept: %.2f\",m,b) left at graph 0.1,graph 0.8;";
     script += "plot 'data.txt' title 'data', m*x+b title 'best fit line';";
   }

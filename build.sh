@@ -35,7 +35,6 @@ emconfigure ./configure \
   --disable-x11-external \
   --disable-raise-console \
   --disable-wxwidgets \
-  --disable-stats \
   --without-libcerf \
   --without-latex \
   --without-kpsexpand \
