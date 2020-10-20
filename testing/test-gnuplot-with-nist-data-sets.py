@@ -13,7 +13,7 @@ dataset_names = [
 "Misra1b",
 "Kirby2",
 "Hahn1",
-# "Nelson",
+# "Nelson", # this is a 2D fit
 "MGH17",
 "Lanczos1",
 "Lanczos2",
@@ -49,6 +49,7 @@ class parsers:
   model_parameter = Combine(Literal("b")+Word(nums)) + Suppress(Literal("=")) + Float("start value 1") + Float("start value 2") + Float("certified value") + Float("certified standard deviation")
 
 
+# download missing datasets
 for name in dataset_names:
   url = f"https://www.itl.nist.gov/div898/strd/nls/data/LINKS/DATA/{name}.dat"
   print("Downloading",name,"from",url)
@@ -59,6 +60,7 @@ for name in dataset_names:
   else:
     print(f"{file} already exists, skipping")
 
+# parse datasets and write gnuplot scripts
 for name in dataset_names:
   dfile = pathlib.Path(f"{name}.dat")
   gfile = pathlib.Path(f"{name}.gnuplot")
@@ -117,6 +119,8 @@ for name in dataset_names:
 
 
 
+  script_lines.append("set term png")
+  script_lines.append(f"set output '{name}.png'")
   plot_cmd = "plot '$data' u 2:1 title 'data'"
   for k in starting_points:
     plot_cmd += ", f2(x,"+",".join([f"{p}_{k}_fit_val" for p in params])+f") title '{starting_points[k]}'"
@@ -132,6 +136,18 @@ for name in dataset_names:
     script_lines.append(f"print '{starting_points[k]}'")
     for p in params:
       script_lines.append(f"print '{p} = ',{p}_{k}_fit_val,' +/- ',{p}_{k}_fit_unc,' (',pdiff({p}_{k}_fit_val,{p}_exp),'% +/- ',pdiff({p}_{k}_fit_unc,{p}_unc),'%)'")
+
+  script_lines.append("# print easy-to-parse comparisons")
+
+  for k in starting_points:
+    for p in params:
+      label = (f"{name} {starting_points[k]} {p} VALUE PERCENT DIFFERENCE").upper()
+      script_lines.append(f"print '{label} = ',pdiff({p}_{k}_fit_val,{p}_exp)")
+      label = (f"{name} {starting_points[k]} {p} UNCERTAINTY PERCENT DIFFERENCE").upper()
+      script_lines.append(f"print '{label} = ',pdiff({p}_{k}_fit_unc,{p}_unc)")
+
+
+
 
 
 
