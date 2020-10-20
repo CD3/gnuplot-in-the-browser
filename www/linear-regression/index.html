@@ -15,7 +15,12 @@ body { padding-top: 5rem; }
 .starter-template { text-align: center; }
 #error { color: red; }
     </style>
+    <script src="./files/canvastext.js"></script>
+    <script src="./files/gnuplot_common.js"></script>
+    <script src="./files/gnuplot_dashedlines.js"></script>
+    <script type="text/javascript">gnuplot.init = function() {};</script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
   </head>
 
 
@@ -78,7 +83,8 @@ body { padding-top: 5rem; }
         <div class="col-md-1">
         </div>
         <div class="col-md-7">
-          <img id="gnuplot-image" style="" alt="Start entering data in the table on the left."></img>
+          <div id="gnuplot-image">
+          </div>
         </div>
       </div>
       <div class="row">
@@ -135,7 +141,7 @@ var Module = {
   onRuntimeInitialized: function() {
     document.getElementById("loading").style.display = "none";
     document.getElementById("gnuplot").style.display = "block";
-    document.getElementById("version").innerHTML = "Powered by " + gnuplot("","--version").stdout;
+    document.getElementById("version").innerHTML = "Powered by " + run_gnuplot("","--version").stdout;
     run_plot();
     
   },
@@ -150,10 +156,10 @@ var Module = {
 };
 
 // Utility function to run gnuplot
-function gnuplot(script, options)
+function run_gnuplot(script, options)
 {
   // Create file from object
-  script = "set term svg;set output 'out.svg'\n" + script;
+  script = "set term canvas name 'draw_plot_on_canvas' size 500,400;set output 'plot.js'\n" + script;
   FS.writeFile(SCRIPT_FILE, script);
 
   // Clear previous stdout/stderr before launching gnuplot
@@ -222,16 +228,19 @@ function run_plot()
   }
 
 
-  var out = gnuplot(script, options);
+  var out = run_gnuplot(script, options);
 
   $("#gnuplot-output").text(out.stdout);
 
   // get image
-  var elImage = document.getElementById("gnuplot-image");
-  var imgdata = FS.readFile("out.svg");
-  var imgblob = new Blob([imgdata], {"type": "image\/svg+xml"});
-  window.URL = window.URL || window.webkitURL;
-  elImage.src = window.URL.createObjectURL(imgblob);
+  let elImage = document.getElementById("gnuplot-image");
+  elImage.innerHTML = "<canvas id='draw_plot_on_canvas' width=500 height=400> <div id='err_msg'>No support for HTML 5 canvas element<\/div> <\/canvas>";
+  let draw_script  = FS.readFile("plot.js",{"encoding":"utf8"});
+  eval(draw_script);
+  if( typeof draw_plot_on_canvas == 'function')
+  {
+    draw_plot_on_canvas();
+  }
 
 
 }

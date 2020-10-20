@@ -78,6 +78,7 @@ cp www/fhsu-logo.png gnuplot-deploy/
 
 cp ${BUILD}/gnuplot-${GNUPLOT_VERSION}/src/gnuplot linear-regression-deploy/gnuplot.js
 cp ${BUILD}/gnuplot-${GNUPLOT_VERSION}/src/gnuplot.wasm linear-regression-deploy/
+cp -r ${BUILD}/gnuplot-${GNUPLOT_VERSION}/term/js/ linear-regression-deploy/files
 cp www/linear-regression/index.html linear-regression-deploy/
 cp www/fhsu-logo.png linear-regression-deploy/
 
