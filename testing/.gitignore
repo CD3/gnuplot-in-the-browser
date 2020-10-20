@@ -2,3 +2,5 @@
 *.gnuplot
 *.log
 *.png
+*.html
+*.json
