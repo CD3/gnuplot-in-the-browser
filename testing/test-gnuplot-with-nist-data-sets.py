@@ -1,6 +1,8 @@
 import requests,pathlib
 from pyparsing import *
 import re
+import pprint
+import subprocess
 
 dataset_names = [
 "Misra1a",
@@ -44,12 +46,16 @@ class parsers:
   model_function = Suppress(Literal("y")+Literal("=")) + SkipTo(LineEnd()+LineEnd())
   model_spec = model_identifier + model_type + model_parameters + model_constant + model_function("model function")
 
+  gnuplot_output_parameter_value = Word(alphanums)("test name") + (Literal("FIRST STARTING POINT")|Literal("SECOND STARTING POINT")|Literal("CERTIFIED VALUE"))("starting point") + Word(alphanums)("parameter name") + Literal("VALUE PERCENT DIFFERENCE") + Literal("=") + Float("parameter percent diff")
+  gnuplot_output_parameter_error = Word(alphanums)("test name") + (Literal("FIRST STARTING POINT")|Literal("SECOND STARTING POINT")|Literal("CERTIFIED VALUE"))("starting point") + Word(alphanums)("parameter name") + Literal("UNCERTAINTY PERCENT DIFFERENCE") + Literal("=") + Float("parameter percent diff")
+
   
 
   model_parameter = Combine(Literal("b")+Word(nums)) + Suppress(Literal("=")) + Float("start value 1") + Float("start value 2") + Float("certified value") + Float("certified standard deviation")
 
 
 # download missing datasets
+results = {}
 for name in dataset_names:
   url = f"https://www.itl.nist.gov/div898/strd/nls/data/LINKS/DATA/{name}.dat"
   print("Downloading",name,"from",url)
@@ -146,14 +152,38 @@ for name in dataset_names:
       label = (f"{name} {starting_points[k]} {p} UNCERTAINTY PERCENT DIFFERENCE").upper()
       script_lines.append(f"print '{label} = ',pdiff({p}_{k}_fit_unc,{p}_unc)")
 
-
-
-
-
-
   gfile.write_text("\n".join(script_lines))
 
 
 
+  print(f"Running gnuplot for {name}.")
+  result = subprocess.run(["gnuplot",str(gfile)],capture_output=True)
+  if result.returncode != 0:
+    print(f"Gnuplot exited with an error running {name} test.")
+  results[name] = {}
+  results[name]['failed'] = result.returncode != 0
+  results[name]['parameter values'] = {}
+  results[name]['parameter uncertainties'] = {}
+
+  matches = parsers.gnuplot_output_parameter_value.searchString(result.stderr)
+  for match in matches:
+    sp = match["starting point"]
+    if not sp in results[name]['parameter values']:
+      results[name]['parameter values'][sp] = {}
+    pn = match["parameter name"]
+    pd = match["parameter percent diff"]
+    results[name]['parameter values'][sp][pn] = pd
+
+  matches = parsers.gnuplot_output_parameter_error.searchString(result.stderr)
+  for match in matches:
+    sp = match["starting point"]
+    if not sp in results[name]['parameter uncertainties']:
+      results[name]['parameter uncertainties'][sp] = {}
+    pn = match["parameter name"]
+    pd = match["parameter percent diff"]
+    results[name]['parameter uncertainties'][sp][pn] = pd
+
+
+pprint.pprint(results)
 
 
