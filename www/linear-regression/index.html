@@ -236,12 +236,17 @@ function run_plot()
   $("#data-table tr.data").each(
     function(i)
     {
-      data_text += $(this).children("td").first().children("input").val();
+      let x = $(this).children("td").first().children("input").val();
+      let y = $(this).children("td").last().children("input").val();
+      data_text += x;
       data_text += " ";
-      data_text += $(this).children("td").last().children("input").val();
+      data_text += y;
       data_text += "\n";
-      state['x-data'].push($(this).children("td").first().children("input").val());
-      state['y-data'].push($(this).children("td").last().children("input").val());
+      if( x != "" || y != "" )
+      {
+        state['x-data'].push(x);
+        state['y-data'].push(y);
+      }
     }
   );
 
