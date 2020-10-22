@@ -142,6 +142,41 @@ var Module = {
     document.getElementById("loading").style.display = "none";
     document.getElementById("gnuplot").style.display = "block";
     document.getElementById("version").innerHTML = "Powered by " + run_gnuplot("","--version").stdout;
+    if(typeof(Storage) !== "undefined")
+    {
+      // reload state if it exists
+      let state = localStorage.getItem("state");
+      if( state != null )
+      {
+        state = JSON.parse(state);
+        $("#graph-title").val( state['graph-title'])
+        $("#x-label").text( state['x-label'])
+        $("#y-label").text( state['y-label'])
+        $("#x-log-checkbox").prop("checked", state['x-log-checkbox'])
+        $("#y-log-checkbox").prop("checked", state['y-log-checkbox'])
+        $("#regression-checkbox").prop("checked", state['regression-checkbox'])
+        while(state['x-data'].length > $("#data-table tr.data").length)
+        {
+          add_data_tablerow();
+        }
+        while(state['y-data'].length > $("#data-table tr.data").length)
+        {
+          add_data_tablerow();
+        }
+
+        for( let i = 0; i < state['x-data'].length; i++)
+        {
+          $("#data-table tr.data").eq(i).children("td").first().children("input").val(state['x-data'][i])
+        }
+        for( let i = 0; i < state['y-data'].length; i++)
+        {
+          $("#data-table tr.data").eq(i).children("td").last().children("input").val(state['y-data'][i])
+        }
+
+      }
+
+    }
+
     run_plot();
     
   },
@@ -185,6 +220,16 @@ function run_gnuplot(script, options)
 // Launch gnuplot with current data
 function run_plot()
 {
+  // get plot configuration and data
+  let state = {'graph-title': $("#graph-title").val(),
+               'x-label':$("#x-label").text(),
+               'y-label':$("#y-label").text(),
+               'x-log-checkbox':$("#x-log-checkbox").prop("checked"),
+               'y-log-checkbox':$("#y-log-checkbox").prop("checked"),
+               'regression-checkbox':$("#regression-checkbox").prop("checked"),
+               'x-data':[],
+               'y-data':[]
+  };
 
   // Write data file
   var data_text = "";
@@ -195,14 +240,16 @@ function run_plot()
       data_text += " ";
       data_text += $(this).children("td").last().children("input").val();
       data_text += "\n";
+      state['x-data'].push($(this).children("td").first().children("input").val());
+      state['y-data'].push($(this).children("td").last().children("input").val());
     }
   );
 
   FS.writeFile("data.txt", data_text);
 
+
   // Call gnuplot
-  var options = [];
-  var script = "";
+  let script = "";
   script += "set title '"+ $("#graph-title").val()+"';";
   script += "set xlabel '"+ $("#x-label").text()+"';";
   script += "set ylabel '"+ $("#y-label").text()+"';";
@@ -228,7 +275,7 @@ function run_plot()
   }
 
 
-  var out = run_gnuplot(script, options);
+  var out = run_gnuplot(script, []);
 
   $("#gnuplot-output").text(out.stdout);
 
@@ -242,6 +289,11 @@ function run_plot()
     draw_plot_on_canvas();
   }
 
+  // Save script and data file 
+  if(typeof(Storage) !== "undefined")
+  {
+    localStorage.setItem("state", JSON.stringify(state));
+  }
 
 }
 
